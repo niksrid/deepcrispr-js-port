@@ -1,7 +1,7 @@
-import * as tf2 from '@tensorflow/tfjs';
-import * as _ from 'underscore';
 import '@tensorflow/tfjs-node';
+import * as tf2 from '@tensorflow/tfjs';
 tf2.setBackend('tensorflow');
+import * as _ from 'underscore';
 import * as utils from './utils.js';
 import { Episgt } from './Episgt.js';
 import { DCModel, DCModelOntar } from './DCModel.js';
@@ -39,10 +39,10 @@ export function buildOnTargetModel(inputs) {
         u_lst.push(u)
     }
 
-    let hu_m1 = hu_lst[channelSize.length - 1]
-    let pre_u_last = encoder[channelSize.length - 1].conv(hu_m1)
-    let u_last = encoder_u[channelSize.length - 1].norm(pre_u_last)
-    u_last = tf2.add(u_last, betas[channelSize.length - 1])
+    let hu_m1 = hu_lst[hu_lst.length - 1]
+    let pre_u_last = encoder[encoder.length - 1].conv(hu_m1)
+    let u_last = encoder_u[encoder_u.length - 1].norm(pre_u_last)
+    u_last = tf2.add(u_last, betas[betas.length - 1])
     let hu_last = tf2.relu(u_last)
     hu_lst.push(hu_last)
     u_lst.push(u_last)
@@ -53,18 +53,17 @@ export function buildOnTargetModel(inputs) {
     let ebn6u = new utils.BatchNorm(false, 'u6', 0.99)
     let e7 = new utils.Conv2D(cls_channel_size[1], [1, 3], 'e7');
     let ebn7u = new utils.BatchNorm(false, 'u7', 0.99)
-    let e8 = new utils.Conv2D(cls_channel_size[2], [1, 3], 'e8', 1, 'valid');
+    let e8 = new utils.Conv2D(cls_channel_size[2], [1, 3], 'e8', null, 'valid');
     let ebn8u = new utils.BatchNorm(false, 'u8', 0.99)
     let e9 = new utils.Conv2D(cls_channel_size[3], [1, 1], 'e9');
-    let ebn9u = new utils.BatchNorm(false, 'u9', 0.99)
 
     let cls_layers = [null, e6, e7, e8, e9];
-    let cls_bn_layers = [null, ebn6u, ebn7u, ebn8u, ebn9u];
+    let cls_bn_layers = [null, ebn6u, ebn7u, ebn8u];
     let hl0 = hu_last
     let l_lst = [hl0]
     let hl_lst = [hl0]
 
-    for (let i = 1; i <= cls_channel_size.length; i++) {
+    for (let i = 1; i < cls_channel_size.length; i++) {
         var hl_pre = hl_lst[i - 1]
         var pre_l = cls_layers[i].conv(hl_pre)
         var l = cls_bn_layers[i].norm(pre_l)
@@ -73,11 +72,14 @@ export function buildOnTargetModel(inputs) {
         l_lst.push(l)
     }
 
-    let hl_m1 = hl_lst[cls_channel_size.length - 1]
-    let l_last = cls_layers[cls_channel_size.length - 1].conv(hl_m1)
+    let hl_m1 = hl_lst[hl_lst.length - 1]
+    let l_last = cls_layers[cls_layers.length - 1].conv(hl_m1)
     let hl_last = tf2.softmax(l_last)
     hl_lst.push(hl_last)
     l_lst.push(l_last)
+
+
+    
 
     let sig_l = tf2.squeeze(hl_last)
     return sig_l
@@ -93,6 +95,10 @@ let results = await a.get_dataset()
 let x = results[0]
 let y = results[1]
 x = tf2.expandDims(x, 2)
-let training = new DCModel().train(x, y)
-// console.log(x , y)
+console.log(x.shape, y.shape)
+let model = new DCModel()
+model.train(x, y)
+// console.log(training)
+let predictions = model.ontar_predict(x);
+console.log("Prediction is: ", predictions.map(Math.round).filter(x=>x==1).reduce((a,c)=>a+c,0) / predictions.length)
 })();

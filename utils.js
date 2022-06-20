@@ -17,15 +17,22 @@ export class Conv2D extends Encoder{
     }
 
     conv(inputs, strides = this.strides) {
-      const conv2dLayer = tf2.layers.conv2d({
+      const convObj = {
         kernelSize: this.kernal_shape,
         filters: this.channel_size,
         activation: 'relu',
-        strides,
         padding: this.padding,
         kernelInitializer: 'VarianceScaling',
         name: this.name
-      });
+      }
+      if(strides) {
+      convObj.strides = strides;
+      }
+      // console.log(convObj.filters, inputs.shape.reduce((a,c)=>a+c,0))
+      // if(convObj.filters > inputs.shape[3]) {
+      //   convObj.filters = inputs.shape[3];
+      // }
+      const conv2dLayer = tf2.layers.conv2d(convObj);
      const tensor =  conv2dLayer.apply(inputs);
      return tensor;
     }
